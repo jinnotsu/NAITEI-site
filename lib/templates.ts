@@ -4,6 +4,11 @@ interface PortfolioData {
   strengthAndWeakness: string;
   mostDevotedThing: string;
   companyAttraction: string;
+  dynamicQuestions?: Array<{
+    id: string;
+    question: string;
+    answer: string;
+  }>;
 }
 
 // --- テンプレート1: スタイリッシュ ---
@@ -11,6 +16,15 @@ const generateStylishContent = (data: PortfolioData, imageFileName?: string) => 
   // 画像が指定されていれば<img>タグを生成、なければ空文字
   const imageTag = imageFileName
     ? `<img src="img/${imageFileName}" alt="プロフィール写真" class="profile-image">`
+    : '';
+
+  // 動的質問のHTMLを生成
+  const dynamicQuestionsHtml = data.dynamicQuestions && data.dynamicQuestions.length > 0
+    ? data.dynamicQuestions.map(q => `
+      <div class="faq-item">
+        <h3>${q.question}</h3>
+        <p>${q.answer.replace(/\n/g, '<br>')}</p>
+      </div>`).join('')
     : '';
 
   const html = `<!DOCTYPE html>
@@ -40,6 +54,7 @@ const generateStylishContent = (data: PortfolioData, imageFileName?: string) => 
         <h3>当社のどのような点に魅力を感じましたか？</h3>
         <p>${data.companyAttraction.replace(/\n/g, '<br>')}</p>
       </div>
+      ${dynamicQuestionsHtml}
     </div>
   </div>
   <script src="script.js"></script>
@@ -124,6 +139,13 @@ const generateSimpleContent = (data: PortfolioData, imageFileName?: string) => {
     ? `<img src="img/${imageFileName}" alt="プロフィール写真" class="profile-image">`
     : '';
 
+  // 動的質問のHTMLを生成
+  const dynamicQuestionsHtml = data.dynamicQuestions && data.dynamicQuestions.length > 0
+    ? data.dynamicQuestions.map(q => `
+    <h3>${q.question}</h3>
+    <p>${q.answer.replace(/\n/g, '<br>')}</p>`).join('')
+    : '';
+
   const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -144,6 +166,7 @@ const generateSimpleContent = (data: PortfolioData, imageFileName?: string) => {
     <p>${data.mostDevotedThing.replace(/\n/g, '<br>')}</p>
     <h3>当社への魅力</h3>
     <p>${data.companyAttraction.replace(/\n/g, '<br>')}</p>
+    ${dynamicQuestionsHtml}
   </div>
   <script src="script.js"></script>
 </body>

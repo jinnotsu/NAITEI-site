@@ -6,6 +6,8 @@ import { templates, TemplateKey } from '../../lib/templates';
 import JSZip from 'jszip';
 import Link from "next/link";
 import ProofreadingPopUp from '../components/ProofreadingPopUp';
+import ProofreadButton from '../components/ProofreadButton';
+import QuestionGenerator from '../components/QuestionGenerator';
 
 export default function Home() {
 
@@ -27,6 +29,13 @@ export default function Home() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [proofreadingLoading, setProofreadingLoading] = useState<{[key: string]: boolean}>({}); // 校正中のロード状態を管理するやつ
   
+  // 動的質問フィールドの状態管理
+  const [dynamicQuestions, setDynamicQuestions] = useState<Array<{
+    id: string;
+    question: string;
+    answer: string;
+  }>>([]);
+  
   // モーダル関連のState
   const [modalState, setModalState] = useState({
     isOpen: false,
@@ -36,7 +45,12 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const { html, css, js } = templates[selectedTemplate].generate(inputs, imageFile?.name);
+    const inputsWithDynamicQuestions = {
+      ...inputs,
+      dynamicQuestions: dynamicQuestions
+    };
+    
+    const { html, css, js } = templates[selectedTemplate].generate(inputsWithDynamicQuestions, imageFile?.name);
 
     let previewHtml = html
       .replace('<link rel="stylesheet" href="style.css">', `<style>${css}</style>`)
@@ -58,7 +72,7 @@ export default function Home() {
     return () => {
       URL.revokeObjectURL(newUrl);
     };
-  }, [inputs, selectedTemplate, imageFile, imageUrl]);
+  }, [inputs, selectedTemplate, imageFile, imageUrl, dynamicQuestions]);
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -97,61 +111,40 @@ export default function Home() {
   };
 
   // じん担当
-  // 校正ボタンの関数
-  const getProofreadButtonStyle = (isLoading: boolean, hasText: boolean) => ({
-    padding: '8px 12px',
-    backgroundColor: isLoading ? '#ccc' : '#4CAF50',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: isLoading ? 'not-allowed' : 'pointer',
-    fontSize: '12px',
-    whiteSpace: 'nowrap' as const
-  });
-
-  const handleProofread = async (fieldName: string) => {
-    const currentText = inputs[fieldName as keyof typeof inputs];
-    if (!currentText.trim()) return;
-
+  // 校正ボタンのスタイル管理とハンドラー
+  const handleProofreadStart = (fieldName: string) => {
     setProofreadingLoading(prev => ({ ...prev, [fieldName]: true }));
-    
-    try {
-      const response = await fetch('/api', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: currentText }),
-      });
+  };
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        // モーダルを表示して校正前後を確認
-        setModalState({
-          isOpen: true,
-          originalText: currentText,
-          correctedText: data.correctedText,
-          fieldName: fieldName
-        });
-      } else {
-        console.error('Error:', data.error);
-        alert('校正に失敗しました: ' + data.error);
-      }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      alert('校正に失敗しました');
-    } finally {
-      setProofreadingLoading(prev => ({ ...prev, [fieldName]: false }));
-    }
+  const handleProofreadComplete = (originalText: string, correctedText: string, fieldName: string) => {
+    setProofreadingLoading(prev => ({ ...prev, [fieldName]: false }));
+    setModalState({
+      isOpen: true,
+      originalText,
+      correctedText,
+      fieldName
+    });
+  };
+
+  const handleProofreadError = (error: string) => {
+    alert(error);
   };
 
   // モーダル関連のハンドラー
   const handleConfirmCorrection = () => {
-    setInputs(prev => ({
-      ...prev,
-      [modalState.fieldName]: modalState.correctedText,
-    }));
+    if (modalState.fieldName.startsWith('dynamic_')) {
+      // 動的質問の校正結果を適用
+      const questionId = modalState.fieldName.replace('dynamic_', '');
+      setDynamicQuestions(prev => 
+        prev.map(q => q.id === questionId ? { ...q, answer: modalState.correctedText } : q)
+      );
+    } else {
+      // 通常のフィールドの校正結果を適用
+      setInputs(prev => ({
+        ...prev,
+        [modalState.fieldName]: modalState.correctedText,
+      }));
+    }
     setModalState({ ...modalState, isOpen: false });
   };
 
@@ -163,12 +156,27 @@ export default function Home() {
     setModalState({ ...modalState, isOpen: false });
   };
 
+  // 動的質問の更新ハンドラー
+  const handleDynamicQuestionsUpdate = (questions: Array<{ id: string; question: string; answer: string; }>) => {
+    setDynamicQuestions(questions);
+  };
+
+  // 校正ローディング状態の更新ハンドラー
+  const handleProofreadingLoadingUpdate = (updates: Record<string, boolean>) => {
+    setProofreadingLoading(updates);
+  };
+
   // じん担当ここまで
 
   const handleDownload = async () => {
     const zip = new JSZip();
     
-    const { html, css, js } = templates[selectedTemplate].generate(inputs, imageFile?.name);
+    const inputsWithDynamicQuestions = {
+      ...inputs,
+      dynamicQuestions: dynamicQuestions
+    };
+    
+    const { html, css, js } = templates[selectedTemplate].generate(inputsWithDynamicQuestions, imageFile?.name);
 
     zip.file('index.html', html);
     zip.file('style.css', css);
@@ -309,58 +317,69 @@ export default function Home() {
                   onChange={handleChange} 
                   style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} 
                 />
-                <button
-                  onClick={() => handleProofread('catchphrase')}
-                  disabled={proofreadingLoading.catchphrase || !inputs.catchphrase.trim()}
-                  style={{
-                    ...getProofreadButtonStyle(proofreadingLoading.catchphrase, inputs.catchphrase.trim().length > 0),
-                    padding: '10px 15px'
-                  }}
-                >
-                  {proofreadingLoading.catchphrase ? '校正中...' : '文章校正'}
-                </button>
+                <ProofreadButton
+                  text={inputs.catchphrase}
+                  fieldName="catchphrase"
+                  isLoading={proofreadingLoading.catchphrase}
+                  onProofreadStart={handleProofreadStart}
+                  onProofreadComplete={handleProofreadComplete}
+                  onError={handleProofreadError}
+                  style={{ padding: '10px 15px' }}
+                />
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{fontWeight: 'bold'}}>あなたの長所と短所を教えてください。</label>
-                <button
-                  onClick={() => handleProofread('strengthAndWeakness')}
-                  disabled={proofreadingLoading.strengthAndWeakness || !inputs.strengthAndWeakness.trim()}
-                  style={getProofreadButtonStyle(proofreadingLoading.strengthAndWeakness, inputs.strengthAndWeakness.trim().length > 0)}
-                >
-                  {proofreadingLoading.strengthAndWeakness ? '校正中...' : '文章校正'}
-                </button>
+                <ProofreadButton
+                  text={inputs.strengthAndWeakness}
+                  fieldName="strengthAndWeakness"
+                  isLoading={proofreadingLoading.strengthAndWeakness}
+                  onProofreadStart={handleProofreadStart}
+                  onProofreadComplete={handleProofreadComplete}
+                  onError={handleProofreadError}
+                />
               </div>
               <textarea name="strengthAndWeakness" value={inputs.strengthAndWeakness} onChange={handleChange} rows={5} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{fontWeight: 'bold'}}>学生時代に最も打ち込んだことは何ですか？</label>
-                <button
-                  onClick={() => handleProofread('mostDevotedThing')}
-                  disabled={proofreadingLoading.mostDevotedThing || !inputs.mostDevotedThing.trim()}
-                  style={getProofreadButtonStyle(proofreadingLoading.mostDevotedThing, inputs.mostDevotedThing.trim().length > 0)}
-                >
-                  {proofreadingLoading.mostDevotedThing ? '校正中...' : '文章校正'}
-                </button>
+                <ProofreadButton
+                  text={inputs.mostDevotedThing}
+                  fieldName="mostDevotedThing"
+                  isLoading={proofreadingLoading.mostDevotedThing}
+                  onProofreadStart={handleProofreadStart}
+                  onProofreadComplete={handleProofreadComplete}
+                  onError={handleProofreadError}
+                />
               </div>
               <textarea name="mostDevotedThing" value={inputs.mostDevotedThing} onChange={handleChange} rows={5} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{fontWeight: 'bold'}}>当社のどのような点に魅力を感じましたか？</label>
-                <button
-                  onClick={() => handleProofread('companyAttraction')}
-                  disabled={proofreadingLoading.companyAttraction || !inputs.companyAttraction.trim()}
-                  style={getProofreadButtonStyle(proofreadingLoading.companyAttraction, inputs.companyAttraction.trim().length > 0)}
-                >
-                  {proofreadingLoading.companyAttraction ? '校正中...' : '文章校正'}
-                </button>
+                <ProofreadButton
+                  text={inputs.companyAttraction}
+                  fieldName="companyAttraction"
+                  isLoading={proofreadingLoading.companyAttraction}
+                  onProofreadStart={handleProofreadStart}
+                  onProofreadComplete={handleProofreadComplete}
+                  onError={handleProofreadError}
+                />
               </div>
               {/* じん担当ここまで */}
               <textarea name="companyAttraction" value={inputs.companyAttraction} onChange={handleChange} rows={5} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} />
             </div>
+
+            <QuestionGenerator
+              inputs={inputs}
+              dynamicQuestions={dynamicQuestions}
+              onQuestionsUpdate={handleDynamicQuestionsUpdate}
+              onProofreadModalOpen={handleProofreadComplete}
+              proofreadingLoading={proofreadingLoading}
+              onProofreadingLoadingUpdate={handleProofreadingLoadingUpdate}
+            />
 
             <button
               onClick={handleDownload}
