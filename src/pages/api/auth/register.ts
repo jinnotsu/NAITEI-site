@@ -1,43 +1,65 @@
-// src/pages/api/auth/register.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { hash } from 'bcrypt';
-import { kv } from '@/lib/kv'; 
+// src/app/api/auth/register/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { hash } from 'bcrypt'
+import { kv } from '@/lib/kv'
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  
-  // --- ▼ デバッグ用のコードを追加 ▼ ---
-  console.log('--- Environment Variables Check ---');
-  console.log('KV_REST_API_URL:', process.env.KV_REST_API_URL);
-  // トークン自体は長すぎるので、存在するかどうか(true/false)だけ確認
-  console.log('KV_REST_API_TOKEN is set:', !!process.env.KV_REST_API_TOKEN);
-  console.log('---------------------------------');
-  // --- ▲ デバッグ用のコードはここまで ▲ ---
-  
-  if (req.method !== 'POST') {
-    return res.status(405).end();
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = req.body;
+    const { email, password } = await request.json()
 
+    // バリデーション
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return NextResponse.json(
+        { error: 'メールアドレスとパスワードは必須です。' },
+        { status: 400 }
+      )
     }
 
-    // パスワードをハッシュ化
-    const hashedPassword = await hash(password, 12);
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'パスワードは6文字以上で入力してください。' },
+        { status: 400 }
+      )
+    }
 
-    // Vercel KVにユーザー情報を保存（キーはemail）
+    // メールアドレスの形式チェック
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: '有効なメールアドレスを入力してください。' },
+        { status: 400 }
+      )
+    }
+
+    // 既存ユーザーのチェック
+    const existingUser = await kv.get(`user:${email}`)
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'このメールアドレスは既に登録されています。' },
+        { status: 409 }
+      )
+    }
+
+    // パスワードのハッシュ化
+    const hashedPassword = await hash(password, 12)
+
+    // ユーザーの保存
     await kv.set(`user:${email}`, {
       email,
       password: hashedPassword,
-    });
+      createdAt: new Date().toISOString(),
+    })
 
-    res.status(201).json({ message: 'User created successfully' });
+    return NextResponse.json(
+      { message: 'ユーザーが正常に作成されました。' },
+      { status: 201 }
+    )
+
   } catch (error) {
-    res.status(500).json({ error: 'Something went wrong' });
+    console.error('Registration error:', error)
+    return NextResponse.json(
+      { error: 'サーバーエラーが発生しました。' },
+      { status: 500 }
+    )
   }
 }
