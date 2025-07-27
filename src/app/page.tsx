@@ -9,6 +9,7 @@ import ProofreadingButton from '../components/ProofreadingButton';
 
 import LogoutButton from "@/components/LogoutButton"
 import QuestionsManager, { Question } from '../components/QuestionsManager';
+import RequireLogin from "@/components/RequireLogin";
 
 
 export default function Home() {
@@ -268,38 +269,11 @@ export default function Home() {
  
 
 
-  // ログインしていない場合の表示
-  if (!session) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>このアプリを利用するにはログインが必要です。</p>
-        <button onClick={() => signIn("github")} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-          Sign in with GitHub
-        </button>
-
-        <button onClick={() => signIn("google")} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-        Sign in with Google
-      </button>
-      <hr />
-
-      <h3>Emailとパスワードでログイン</h3>
-      <form onSubmit={async (e) => {
-        e.preventDefault();
-        const email = e.currentTarget.email.value;
-        const password = e.currentTarget.password.value;
-        await signIn('credentials', { email, password, redirect: false });
-      }}>
-        <input name="email" type="email" placeholder="Email" />
-        <input name="password" type="password" placeholder="Password" />
-        <button type="submit">Sign in</button>
-      </form>
-       <p style={{marginTop: '20px'}}><Link href="/register">アカウントをお持ちでないですか？ 新規登録</Link></p>
-      </div>
-    );
-  }
+  
 
   
   return (
+    <RequireLogin>
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'sans-serif' }}>
       <div style={{ flex: 1, padding: '30px', overflowY: 'auto', backgroundColor: '#fdfdfd', color: '#000000' }}>
         <div style={{ maxWidth: isPreviewVisible ? '600px' : '800px', margin: '0 auto', transition: 'max-width 0.3s' }}>
@@ -440,6 +414,7 @@ export default function Home() {
         </div>
       )}
     </div>
+    </RequireLogin>
   );
 }
 
