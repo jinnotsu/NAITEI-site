@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function generateProofreadText(text: string): Promise<string> {
-  const prompt = `以下の文章を校正してください。誤字脱字、文法の間違いを修正してください。大きな意味の変更や大幅な文字の削減はしないでください。校正後の文章のみを返してください。説明は不要です。\n\n文章:\n${text}`;
+async function generateProofreadText(text: string): Promise<string> {
+  const prompt = `以下の文章を校正してください。誤字脱字、文法の間違いを修正してください。大きな意味の変更や大幅な文字の削減はしないでください。校正後の文章のみを返してください。説明は不要です.\n\n文章:\n${text}`;
 
   // モデル指定
   const result = await genAI.models.generateContent({
@@ -64,7 +64,7 @@ export async function generateProofreadText(text: string): Promise<string> {
   return correctedText.trim(); // 余分な空白を削除して返す
 }
 
-export async function generateQuestions(selfPR: string): Promise<string[]> {
+async function generateQuestions(selfPR: string): Promise<string[]> {
   const prompt = `以下の自己PRの内容を読んで、面接で聞かれそうな深掘りできる質問を2つ生成してください。
 質問は簡潔に1文で作成し、具体的で回答者の経験や考えを引き出せるものにしてください。
 質問のみを改行区切りで返してください。説明や番号は不要です。

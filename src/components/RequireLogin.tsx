@@ -4,7 +4,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
-import Head from 'next/head';
+
 
 export default function RequireLogin({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();

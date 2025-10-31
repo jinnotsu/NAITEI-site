@@ -1,10 +1,11 @@
 "use client";
-import {useSession, signIn, signOut} from "next-auth/react"
+import {useSession} from "next-auth/react"
 
 import { useState, useEffect, ChangeEvent } from 'react';
 import { templates, TemplateKey } from '../../lib/templates';
 import JSZip from 'jszip';
-import Link from "next/link";
+import Image from 'next/image';
+
 import ProofreadingButton from '../components/ProofreadingButton';
 
 import LogoutButton from "@/components/LogoutButton"
@@ -130,21 +131,21 @@ export default function Home() {
 
     const { html, js } = templates[selectedTemplate].generate(inputs, imageFile?.name);
     let previewHtml = html
-      .replace('<link rel="stylesheet" href="style.css">', `<style>${css}</style>`)
-      .replace('<script src="script.js"></script>', `<script>${js}</script>`);
+      .replace('<link rel=\"stylesheet\" href=\"style.css\">', `<style>${css}</style>`)
+      .replace('<script src=\"script.js\"></script>', `<script>${js}</script>`);
     
     // 画像パスの置換処理
     const origin = window.location.origin;
     if (imageFile && imageUrl) {
-      previewHtml = previewHtml.replace(`src="img/${imageFile.name}"`, `src="${imageUrl}"`);
+      previewHtml = previewHtml.replace(`src=\"img/${imageFile.name}\"`, `src=\"${imageUrl}\"`);
     }
-    previewHtml = previewHtml.replace(/src="img\//g, `src="${origin}/img/`);
+    previewHtml = previewHtml.replace(/src=\"img\//g, `src=\"${origin}/img/`);
 
     const blob = new Blob([previewHtml], { type: 'text/html' });
     if (previewUrl) { URL.revokeObjectURL(previewUrl); }
     setPreviewUrl(URL.createObjectURL(blob));
 
-  }, [inputs, selectedTemplate, imageFile, imageUrl, cssContents]);
+  }, [inputs, selectedTemplate, imageFile, imageUrl, cssContents, previewUrl]);
 
 
   const handleSave = async () => {
@@ -268,9 +269,6 @@ export default function Home() {
 
  
 
-
-  
-
   
   return (
     <RequireLogin>
@@ -312,7 +310,7 @@ export default function Home() {
             />
             {imageUrl && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '10px' }}>
-                <img src={imageUrl} alt="選択した画像" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }} />
+                <Image src={imageUrl} alt="選択した画像" width={100} height={100} style={{ objectFit: 'cover', borderRadius: '8px' }} unoptimized />
                 <button
                   onClick={handleImageDelete}
                   style={{ padding: '5px 10px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}
@@ -417,6 +415,3 @@ export default function Home() {
     </RequireLogin>
   );
 }
-
-
- 

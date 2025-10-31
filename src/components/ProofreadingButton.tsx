@@ -29,8 +29,7 @@ const ProofreadingButton: React.FC<ProofreadingButtonProps> = ({
   const [correctedText, setCorrectedText] = useState('');
   // 元のテキストを保存するstate
   const [originalText, setOriginalText] = useState('');
-  // エラー状態を管理するstate
-  const [error, setError] = useState<string | null>(null);
+  
 
   // 校正APIを呼び出す非同期関数（10秒タイムアウト付き）
   const callProofreadingAPI = async (textToProofread: string): Promise<string> => {
@@ -78,8 +77,7 @@ const ProofreadingButton: React.FC<ProofreadingButtonProps> = ({
       return;
     }
 
-    // エラー状態をリセット
-    setError(null);
+    
     // ローディング状態を開始し、元のテキストを保存
     setIsLoading(true);
     setOriginalText(text);
@@ -99,7 +97,7 @@ const ProofreadingButton: React.FC<ProofreadingButtonProps> = ({
       console.error('校正エラー:', error);
       
       const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      setError(`校正に失敗しました: ${errorMessage}`);
+      
       
       // エラーの種類に応じてメッセージを変更
       if (errorMessage.includes('タイムアウト')) {
