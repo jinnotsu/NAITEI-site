@@ -66,6 +66,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  secret: process.env.NEXT_AUTH_SECRET,
 }
 
 // ✅ これが無いとエラーになります！（App Routerとは違う）

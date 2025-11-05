@@ -53,7 +53,7 @@ async function generateProofreadText(text: string): Promise<string> {
 
   // モデル指定
   const result = await genAI.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     contents: prompt, // ここにプロンプト
   });
 
@@ -74,7 +74,7 @@ ${selfPR}`;
 
   // モデル指定
   const result = await genAI.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     contents: prompt,
   });
 

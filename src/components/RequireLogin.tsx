@@ -168,6 +168,7 @@ export default function RequireLogin({ children }: { children: React.ReactNode }
         border: '1px solid #d1d5db', // border-gray-300
         borderRadius: '0.5rem',
         backgroundColor: 'white',
+        color: '#000000', // text-black
         outline: 'none',
         transition: 'all 0.2s',
       } as React.CSSProperties,
